@@ -1,4 +1,5 @@
 import unittest
+import asyncio
 import sys
 import os
 from unittest.mock import patch, mock_open, MagicMock
@@ -7,12 +8,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../'
 
 from openvoice_api_client.client import OpenVoiceApiClient
 
-class TestOpenVoiceApiClient(unittest.TestCase):
-    def setUp(self):
+class TestClientAsync(unittest.TestCase):
+    async def setUpAsync(self):
         # Initialize OpenVoiceApiClient with mock base_url (replace with your actual base_url if needed)
         self.client = OpenVoiceApiClient()
-    
-    def test_generate_audio_url(self):
+
+    async def test_generate_audio_url(self):
         # Mock response data
         mock_response_data = {
             'data': {
@@ -26,12 +27,13 @@ class TestOpenVoiceApiClient(unittest.TestCase):
         
         # Mock requests.post to return the mock response
         with patch('requests.post', return_value=mock_response) as mock_post:
-            url, status_code, message = self.client.generate_audio(
+            url, status_code, message = await self.client.generate_audio(
                 version='v2',
                 language='en',
                 text='Hello, this is a test. I am here there and everywhere.',
                 speaker='kaiwen',
-                response_format='url'
+                response_format='url',
+                async_mode=True  # Ensure async_mode is set to True
             )
             
             # Assertions
@@ -43,7 +45,7 @@ class TestOpenVoiceApiClient(unittest.TestCase):
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.getsize', return_value=12345)  # Mock file size to avoid FileNotFoundError
     @patch('requests.post')
-    def test_generate_audio_bytes(self, mock_post, mock_getsize, mock_open):
+    async def test_generate_audio_bytes(self, mock_post, mock_getsize, mock_open):
         # Mock response data for successful response
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -51,32 +53,58 @@ class TestOpenVoiceApiClient(unittest.TestCase):
         mock_post.return_value = mock_response
 
         output_file = 'generate_audio_bytes.wav'
-        url, status_code, message = self.client.generate_audio(
+        audio_file, status_code, message = await self.client.generate_audio(
             version='v2',
             language='en',
             text='Hello, this is a test',
             speaker='kaiwen',
             response_format='bytes',
-            output_file=output_file
+            output_file=output_file,
+            async_mode=True  # Ensure async_mode is set to True
         )
 
         # Assertions
         self.assertEqual(status_code, 200)  # Verify status code for successful response
-        self.assertEqual(url, output_file)  # Verify that output_file path is returned
-        self.assertIsNone(message)  # No message for byte response
+        self.assertEqual(audio_file, output_file)  # Verify that output_file path is returned
         mock_open.assert_called_once_with(output_file, 'wb')  # Ensure open was called with output_file
         mock_open().write.assert_called_once_with(b'audio_bytes_content')  # Ensure write was called with audio content
         mock_getsize.assert_called_once_with(output_file)  # Ensure getsize was called
 
-    def test_generate_audio_error(self):
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('os.path.getsize', return_value=12345)  # Mock file size to avoid FileNotFoundError
+    @patch('requests.post')
+    async def test_generate_audio_bytes_as_bytes(self, mock_post, mock_getsize, mock_open):
+        # Mock response data for successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b'audio_bytes_content'  # Mock audio bytes content
+        mock_post.return_value = mock_response
+
+        # Call the async method and await the result
+        audio_bytes, status_code, message = await self.client.generate_audio(
+            version='v2',
+            language='en',
+            text='Hello, this is a test',
+            speaker='kaiwen',
+            response_format='bytes'
+        )
+
+        # Assertions
+        self.assertEqual(status_code, 200)  # Verify status code for successful response
+        self.assertEqual(type(audio_bytes), bytes)  # Verify that audio_bytes is of type bytes
+        mock_open.assert_not_called()  # Ensure open was not called
+        mock_getsize.assert_not_called()  # Ensure getsize was not called
+
+    async def test_generate_audio_error(self):
         # Mock requests.post to raise an exception
         with patch('requests.post', side_effect=Exception('Test exception')):
-            url, status_code, message = self.client.generate_audio(
+            url, status_code, message = await self.client.generate_audio(
                 version='v2',
                 language='en',
                 text='Hello, this is a test',
                 speaker='kaiwen',
-                response_format='url'
+                response_format='url',
+                async_mode=True  # Ensure async_mode is set to True
             )
             
             # Assertions
@@ -84,7 +112,7 @@ class TestOpenVoiceApiClient(unittest.TestCase):
             self.assertIsNone(url)
             self.assertEqual(message, 'Internal Server Error')
 
-    def test_generate_audio_bad_request(self):
+    async def test_generate_audio_bad_request(self):
         # Mock response data for bad request
         mock_response = MagicMock()
         mock_response.status_code = 400
@@ -94,12 +122,13 @@ class TestOpenVoiceApiClient(unittest.TestCase):
 
         # Mock requests.post to return the mock response
         with patch('requests.post', return_value=mock_response):
-            url, status_code, message = self.client.generate_audio(
+            url, status_code, message = await self.client.generate_audio(
                 version='v2',
                 language='en',
                 text='Hello, this is a test',
                 speaker='kaiwen',
-                response_format='url'
+                response_format='url',
+                async_mode=True  # Ensure async_mode is set to True
             )
 
             # Assertions
@@ -109,5 +138,5 @@ class TestOpenVoiceApiClient(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
-
+    # Run the async tests using asyncio.run()
+    asyncio.run(unittest.main())
