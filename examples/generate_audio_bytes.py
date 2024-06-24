@@ -16,10 +16,10 @@ API_URL = os.getenv("API_URL", "http://localhost:5000")
 VERSION = 'v2'
     
 # Create an instance of OpenVoiceApiClient with DEBUG log level
-OpenVoiceApiClient = OpenVoiceApiClient(base_url=API_URL, log_level=logging.DEBUG)
+client = OpenVoiceApiClient(base_url=API_URL, log_level=logging.DEBUG)
 
 # Example generate_audio call
-url, status_code, response_message = OpenVoiceApiClient.generate_audio(
+url, status_code, response_message = client.generate_audio(
     version=VERSION,
     language='en',
     text='Hello, this is a test. I am here, there and everywhere',
@@ -32,6 +32,6 @@ url, status_code, response_message = OpenVoiceApiClient.generate_audio(
 )
 
 if status_code == 200:
-    OpenVoiceApiClient.logger.info(f"Audio file saved successfully or URL received: {url}")
+    client.logger.info(f"Audio file saved successfully or URL received: {url}")
 else:
-    OpenVoiceApiClient.logger.error(f"Failed to generate audio: {response_message}")
+    client.logger.error(f"Failed to generate audio: {response_message}")
