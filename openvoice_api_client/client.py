@@ -6,7 +6,7 @@ import json
 import asyncio
 import aiofiles
 import base64
-#import traceback
+import traceback
 
 class OpenVoiceApiClient:
     def __init__(self, base_url='http://localhost:5000', log_level=None, log_format=None):
@@ -90,7 +90,7 @@ class OpenVoiceApiClient:
         
         except Exception as e:
             self.logger.error(f" > An unexpected error occurred: {type(e).__name__}: {str(e)}")
-            #self.logger.error(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
             return None, 500, "Internal Server Error"
 
     def _handle_response(self, response, response_format, output_file, encode):
@@ -127,7 +127,7 @@ class OpenVoiceApiClient:
         status_code = response.status
         if status_code == 200:
             if response_format == 'url':
-                response_data = response.json()
+                response_data = await response.json()
                 file_url = response_data['data']['url']
                 response_message = response_data['data']['message']
                 self.logger.debug(f" > Generated audio URL: {file_url}")
@@ -153,7 +153,7 @@ class OpenVoiceApiClient:
                         audio_data = audio_bytes
                     return audio_data, status_code, "Generated audio bytes"
         else:
-            response_data = response.json()
+            response_data = await response.json()
             response_message = response_data['data']['message']
             self.logger.error(f" > Failed to generate audio. Response status code: {status_code}, Response message: {response_message}")
             return None, status_code, response_message

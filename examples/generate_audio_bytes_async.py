@@ -26,7 +26,7 @@ async def main():
             language='en',
             text='Hello, this is a test. I am here, there and everywhere',
             speed=1.0,
-            #speaker='kaiwen',
+            speaker='elon',
             #style='excited', # only v1
             #accent='en-au', # only v2
             response_format='bytes',
