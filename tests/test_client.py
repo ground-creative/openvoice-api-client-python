@@ -1,6 +1,7 @@
 import unittest
 import sys
 import os
+import base64
 from unittest.mock import patch, mock_open, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
@@ -90,6 +91,61 @@ class TestClient(unittest.TestCase):
         self.assertEqual(type(audio_bytes), bytes)  # Verify that audio_bytes is of type bytes
         mock_open.assert_not_called()  # Ensure open was not called
         mock_getsize.assert_not_called()  # Ensure getsize was not called
+
+
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('os.path.getsize', return_value=12345)  # Mock file size to avoid FileNotFoundError
+    @patch('requests.post')
+    def test_generate_audio_bytes_with_encode(self, mock_post, mock_getsize, mock_open):
+        # Mock response data for successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = base64.b64encode(b'audio_bytes_content') 
+        mock_post.return_value = mock_response
+
+        output_file = 'generate_audio_bytes.wav'
+        audio_file, status_code, message = self.client.generate_audio(
+            version='v2',
+            language='en',
+            text='Hello, this is a test',
+            speaker='kaiwen',
+            response_format='bytes',
+            output_file=output_file,
+            encode=True # Base64 encode the audio bytes
+        )
+
+        # Assertions
+        self.assertEqual(status_code, 200)  # Verify status code for successful response
+        self.assertEqual(audio_file, output_file)  # Verify that output_file path is returned
+        mock_open.assert_called_once_with(output_file, 'wb')  # Ensure open was called with output_file
+        mock_open().write.assert_called_once_with(b'audio_bytes_content')  # Ensure write was called with audio content
+        mock_getsize.assert_called_once_with(output_file)  # Ensure getsize was called
+
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('os.path.getsize', return_value=12345)  # Mock file size to avoid FileNotFoundError
+    @patch('requests.post')
+    def test_generate_audio_bytes_as_bytes_with_encode(self, mock_post, mock_getsize, mock_open):
+        # Mock response data for successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = base64.b64encode(b'audio_bytes_content') 
+        mock_post.return_value = mock_response
+
+        # Call generate_audio with response_format='bytes' and encode=True
+        audio_bytes_base64, status_code, message = self.client.generate_audio(
+            version='v2',
+            language='en',
+            text='Hello, this is a test',
+            speaker='kaiwen',
+            response_format='bytes',
+            encode=True # Base64 encode the audio bytes
+        )
+
+        # Assertions
+        self.assertEqual(status_code, 200)
+        self.assertEqual(audio_bytes_base64, b'audio_bytes_content')
+        mock_open.assert_not_called()
+        mock_getsize.assert_not_called()
 
     def test_generate_audio_error(self):
         # Mock requests.post to raise an exception
