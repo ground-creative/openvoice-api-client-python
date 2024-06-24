@@ -5,12 +5,12 @@ setup(
     version='1.0.0',
     description='OpenVoice API client',
     url='https://github.com/yourusername/mypackage',
-    author='Your Name',
+    author='Carlo Pietrobattista',
     author_email='irony00100@gmail.com',
     license='MIT',
     packages=find_packages(),
     install_requires=[
-        'requests'
+        'requests',
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
