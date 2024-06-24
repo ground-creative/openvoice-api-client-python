@@ -14,6 +14,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         'requests',
+        'aiohttp',
+        'aiofiles', 
     ],
     classifiers=[
         'Programming Language :: Python :: 3',

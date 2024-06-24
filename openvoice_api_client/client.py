@@ -6,7 +6,7 @@ import json
 import asyncio
 import aiofiles
 import base64
-import traceback
+#import traceback
 
 class OpenVoiceApiClient:
     def __init__(self, base_url='http://localhost:5000', log_level=None, log_format=None):
