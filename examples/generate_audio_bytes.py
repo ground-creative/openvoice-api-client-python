@@ -18,20 +18,21 @@ VERSION = 'v2'
 # Create an instance of OpenVoiceApiClient with DEBUG log level
 client = OpenVoiceApiClient(base_url=API_URL, log_level=logging.DEBUG)
 output_file='outputs/generated_audio_bytes.wav'
+if os.path.exists(output_file):
+    os.remove(output_file)
 
 try:
     # Example generate_audio call
     audio_file, status_code, response_message = client.generate_audio(
         version=VERSION,
-        language='en',
-        text='Hello, this is a test. I am here, there and everywhere',
+        model='en',
+        input='Hello, this is a test. I am here, there and everywhere',
         speed=1.0,
         #speaker='kaiwen',
         #style='excited', # only v1
         #accent='en-au', # only v2
         response_format='bytes',
-        output_file=output_file,
-        encode=True    # encode to base64
+        output_file=output_file
     )
 
     if status_code == 200:

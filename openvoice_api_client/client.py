@@ -1,10 +1,7 @@
-import aiohttp
+import logging
 import requests
 import os
-import logging
 import json
-import asyncio
-import aiofiles
 import base64
 import traceback
 
@@ -15,6 +12,7 @@ class OpenVoiceApiClient:
         self._configure_logging(log_level, log_format)
     
     def _configure_logging(self, log_level, log_format):
+        
         if log_level:
             self.logger.setLevel(log_level)
         else:
@@ -31,21 +29,14 @@ class OpenVoiceApiClient:
         ch.setFormatter(formatter)
         self.logger.addHandler(ch)
     
-    def generate_audio(self, version='v2', language='en', text='', speaker='raw', speed=1.0, response_format='url', style=None, accent=None, output_file=None, async_mode=False, encode=False):
-        if async_mode:
-            return self._generate_audio_async(version, language, text, speaker, speed, response_format, style, accent, output_file, encode)
-        else:
-            return self._generate_audio_sync(version, language, text, speaker, speed, response_format, style, accent, output_file, encode)
-    
-    def _generate_audio_sync(self, version, language, text, speaker, speed, response_format, style, accent, output_file, encode):
-        url = f'{self.base_url}/generate-audio/{version}/'
+    def generate_audio(self, version='v2', model='en', input='', voice='raw', speed=1.0, response_format='url', style=None, accent=None, output_file=None):
+        url = f'{self.base_url}/{version}/generate-audio'
         payload = {
-            'language': language,
-            'text': text,
+            'model': model,
+            'input': input,
             'speed': speed,
             'response_format': response_format,
-            'speaker': speaker,
-            'encode': encode
+            'voice': voice
         }
         
         if style:
@@ -55,112 +46,113 @@ class OpenVoiceApiClient:
             payload['accent'] = accent
         
         try:
-            self.logger.debug(f" > Starting request: {url} with params: {json.dumps(payload, indent=4)}")
-            
+            self.logger.debug(f" > Starting request:\n{url}\nparams:\n {json.dumps(payload, indent=4)} < ")
             response = requests.post(url, json=payload)
-            return self._handle_response(response, response_format, output_file, encode)
+            return self._handle_response(response, response_format, output_file)
         
         except Exception as e:
-            self.logger.error(f" > An unexpected error occurred: {type(e).__name__}: {str(e)}")
+            self.logger.error(f" > An unexpected error occurred: {type(e).__name__}: {str(e)} < ")
+            
+            if self.logger.getEffectiveLevel() == logging.DEBUG:
+                self.logger.error(traceback.format_exc())
+            
             return None, 500, "Internal Server Error"
-
-    async def _generate_audio_async(self, version, language, text, speaker, speed, response_format, style, accent, output_file, encode):
-        url = f'{self.base_url}/generate-audio/{version}/'
-        payload = {
-            'language': language,
-            'text': text,
-            'speed': speed,
-            'response_format': response_format,
-            'speaker': speaker,
-            'encode': encode
-        }
         
-        if style:
-            payload['style'] = style
+    def change_voice(self, voice, audio_data=None, audio_file=None, version='v2', model='en', response_format='url', accent=None, output_file=None, encode=False):
+        
+        if audio_file:
+            try:
+                with open(audio_file, 'rb') as audio:
+                    audio_bytes = audio.read()
+                    audio_data = base64.b64encode(audio_bytes).decode('utf-8')
+            except Exception as e:
+                self.logger.error(f" > An unexpected error occurred: {type(e).__name__}: {str(e)} < ")
+                if self.logger.getEffectiveLevel() == logging.DEBUG:
+                    self.logger.error(traceback.format_exc())
+                return None, 500, "Internal Server Error"
+        
+        elif encode:
+            audio_bytes = base64.b64encode(audio_data).decode('utf-8')
+            audio_data = audio_bytes
+        url = f'{self.base_url}/{version}/change-voice'
+        payload = {
+            'model': model,
+            'response_format': response_format,
+            'voice': voice,
+            'audio_data': audio_data
+        }
         
         if accent:
             payload['accent'] = accent
         
         try:
-            self.logger.debug(f" > Starting request: {url} with params: {json.dumps(payload, indent=4)}")
-
-            async with aiohttp.ClientSession() as client:
-                response = await client.post(url, json=payload)
-                return await self._handle_response_async(response, response_format, output_file, encode)
+            self.logger.debug(f" > Starting request:\n{url}\nparams:\n {json.dumps(payload, indent=4)} <")
+            response = requests.post(url, json=payload)
+            return self._handle_response(response, response_format, output_file)
         
         except Exception as e:
-            self.logger.error(f" > An unexpected error occurred: {type(e).__name__}: {str(e)}")
-            self.logger.error(traceback.format_exc())
+            self.logger.error(f" > An unexpected error occurred: {type(e).__name__}: {str(e)} < ")
+            
+            if self.logger.getEffectiveLevel() == logging.DEBUG:
+                self.logger.error(traceback.format_exc())
+            
             return None, 500, "Internal Server Error"
 
-    def _handle_response(self, response, response_format, output_file, encode):
+    def _handle_response(self, response, response_format, output_file):
         status_code = response.status_code
+        
         if status_code == 200:
             if response_format == 'url':
                 response_data = response.json()
-                file_url = response_data['data']['url']
-                response_message = response_data['data']['message']
-                self.logger.debug(f" > Generated audio URL: {file_url}")
+                file_url = response_data['result']['data']['url']
+                response_message = response_data['result']['message']
+                self.logger.debug(f" > Finished processing request, response:\n {json.dumps(response_data, indent=4)} < ")
+                self.logger.debug(f" > Generated audio URL: {file_url} < ")
                 return file_url, status_code, response_message
-            elif response_format == 'bytes':
+            
+            elif response_format == 'bytes' or response_format == 'base64':
                 if output_file is not None:
-                    audio_bytes = response.content
-                    if encode == True:
-                        audio_bytes = base64.b64decode(response.content)
+    
+                    if response_format == 'base64':
+                        response_data = response.json()
+                        audio_base64 = response_data['result']['data']['audio_data']
+                        audio_bytes = base64.b64decode(audio_base64)
+                    else:
+                        audio_bytes = response.content
+                    
                     with open(output_file, 'wb') as audio_file:
                         audio_file.write(audio_bytes)
                     file_size = os.path.getsize(output_file)
-                    self.logger.debug(f" > Saved generated audio bytes: {file_size}")
+                    self.logger.debug(f" > Finished processing request, saved generated audio bytes: {file_size} < ")
                     return output_file, status_code, "Generated audio bytes and saved to file"
+                
                 else:
                     audio_bytes = response.content
-                    if encode == True:
-                        audio_bytes = base64.b64decode(response.content)
-                    return audio_bytes, status_code, "Generated audio bytes"
+                    
+                    if response_format == 'base64':
+                        response_data = response.json()
+                        audio_base64 = response_data['result']['data']['audio_data']
+                        audio_bytes = base64.b64decode(audio_base64)
+                        self.logger.debug(f" > Finished processing request, bytes length: {len(audio_base64)} < ")
+
+                    return audio_bytes, status_code, "Generated audio bytes" 
+            
+            elif response_format == 'stream':
+                return response, status_code, "Generated audio stream"
+        
         else:
             response_data = response.json()
-            response_message = response_data['data']['message']
-            self.logger.error(f" > Failed to generate audio. Response status code: {status_code}, Response message: {response_message}")
+            response_message = response_data['result']['message']
+            self.logger.debug(f" > Finished request, response:\n {json.dumps(response_data, indent=4)} < ")
+            self.logger.error(f" > Failed to generate audio. Response status code: {status_code}, Response message: {response_message} < ")
             return None, status_code, response_message
 
-    async def _handle_response_async(self, response, response_format, output_file, encode):
-        status_code = response.status
-        if status_code == 200:
-            if response_format == 'url':
-                response_data = await response.json()
-                file_url = response_data['data']['url']
-                response_message = response_data['data']['message']
-                self.logger.debug(f" > Generated audio URL: {file_url}")
-                return file_url, status_code, response_message
-            elif response_format == 'bytes':
-                if output_file is not None:
-                    async with aiofiles.open(output_file, 'wb') as audio_file:
-                        while True:
-                            chunk = await response.content.read(1024)
-                            if encode == True:
-                                audio_bytes = base64.b64decode(chunk)
-                                chunk = audio_bytes
-                            if not chunk:
-                                break
-                            await audio_file.write(chunk)
-                    file_size = os.path.getsize(output_file)
-                    self.logger.debug(f" > Saved generated audio bytes: {file_size}")
-                    return output_file, status_code, "Generated audio bytes and saved to file"
-                else:
-                    audio_data = await response.read()
-                    if encode == True:
-                        audio_bytes = base64.b64decode(audio_data)
-                        audio_data = audio_bytes
-                    return audio_data, status_code, "Generated audio bytes"
-        else:
-            response_data = await response.json()
-            response_message = response_data['data']['message']
-            self.logger.error(f" > Failed to generate audio. Response status code: {status_code}, Response message: {response_message}")
-            return None, status_code, response_message
-
-async def stream_generator(output_file, response):
-    async with open(output_file, 'wb') as audio_file:
-        async for chunk in response.aiter_bytes():
-            if chunk:
-                await audio_file.write(chunk)
-                yield chunk
+    def stream_generator(self, output_file, response):
+        self.logger.debug(" > Starting streaming and writing to file <")
+        with open(output_file, 'wb') as audio_file:
+            for chunk in response.iter_content(chunk_size=1024):
+                
+                if chunk:
+                    audio_file.write(chunk)
+        
+        self.logger.debug(" > Streaming and writing completed <")

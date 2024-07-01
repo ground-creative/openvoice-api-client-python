@@ -12,4 +12,15 @@ pip install git+https://github.com/ground-creative/openvoice-api-client-python.g
 
 ## Usage
 
-View examples folder
+```
+client = OpenVoiceApiClient()
+
+url, status_code, message = client.generate_audio(
+    version=VERSION,
+    model='en',
+    input='Hello, this is a test. I am here, there and everywhere',
+    speed=1.0,
+    response_format='url'
+)
+```
+View examples folder for more examples

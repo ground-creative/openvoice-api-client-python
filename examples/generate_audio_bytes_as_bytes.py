@@ -1,7 +1,6 @@
 import logging
 import sys
 import os
-import base64
 from dotenv import load_dotenv
 
 import traceback
@@ -21,21 +20,21 @@ VERSION = 'v2'
 # Create an instance of OpenVoiceApiClient with DEBUG log level
 client = OpenVoiceApiClient(base_url=API_URL, log_level=logging.DEBUG)
 output_file='outputs/generated_audio_bytes_as_bytes.wav'
+if os.path.exists(output_file):
+    os.remove(output_file)
 
 try:
     # Example generate_audio call
     audio_bytes, status_code, response_message = client.generate_audio(
         version=VERSION,
-        language='en',
-        text='Hello, this is a test. I am here, there and everywhere',
+        model='en',
+        input='Hello, this is a test. I am here, there and everywhere',
         speed=1.0,
         #speaker='kaiwen',
         #style='excited', # only v1
         #accent='en-au', # only v2
         response_format='bytes',
-        encode=True    # encode to base64
     )
-    print(len(audio_bytes))
     if status_code == 200:
         with open(output_file, 'wb') as audio_file:
             audio_file.write(audio_bytes)

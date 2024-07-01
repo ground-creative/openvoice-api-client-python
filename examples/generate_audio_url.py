@@ -21,10 +21,10 @@ client = OpenVoiceApiClient(base_url=API_URL, log_level=logging.DEBUG)
 # Example generate_audio call
 url, status_code, message = client.generate_audio(
     version=VERSION,
-    language='en',
-    text='Hello, this is a test. I am here, there and everywhere',
+    model='en',
+    input='Hello, this is a test. I am here, there and everywhere',
     speed=1.0,
-    speaker='kaiwen',
+    voice='kaiwen',
     #style='excited', # only v1
     #accent='en-au', # only v2
     response_format='url'
