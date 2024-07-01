@@ -24,8 +24,8 @@ url, status_code, message = client.generate_audio(
 )
 
 if status_code == 200:
-    client.logger.info(f"Audio file saved successfully or URL received: {url}")
+    client.logger.info(f"URL received: {url}")
 else:
-    client.logger.error(f"Failed to generate audio: {message}")
+    client.logger.error(f"Failed to generate audio url: {message}")
 ```
 View examples folder for more examples
